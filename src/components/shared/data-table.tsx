@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
+import { cn } from '@/lib/utils'
 
 interface DataTableColumn<T> {
   header: string
@@ -23,6 +24,7 @@ export function DataTable<T>({
   loading = false,
   skeletonRows = 5,
   emptyMessage = 'No data',
+  onRowClick,
 }: {
   columns: DataTableColumn<T>[]
   data: T[]
@@ -30,6 +32,7 @@ export function DataTable<T>({
   loading?: boolean
   skeletonRows?: number
   emptyMessage?: string
+  onRowClick?: (row: T) => void
 }) {
   return (
     <Table>
@@ -59,7 +62,11 @@ export function DataTable<T>({
           </TableRow>
         ) : (
           data.map((row) => (
-            <TableRow key={keyField(row)}>
+            <TableRow
+              key={keyField(row)}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+              className={cn(onRowClick && 'cursor-pointer')}
+            >
               {columns.map((col) => (
                 <TableCell key={col.header} className={col.className}>
                   {col.cell(row)}
