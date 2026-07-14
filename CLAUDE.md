@@ -22,8 +22,8 @@ Prefer clarity and correctness over animation and complexity.
 ## 2. Tech stack (fixed — do not substitute without being asked)
 
 - **Runtime:** Bun
-- **Framework:** Next.js 14+ with App Router
-- **Language:** TypeScript (strict mode)
+- **Framework:** Next.js 16 (App Router, Turbopack default)
+- **Node.js:** >= 20.9.0 required
 - **Components:** shadcn/ui
 - **Styling:** Tailwind CSS
 - **Dark mode:** next-themes (`darkMode: "class"` in tailwind.config)

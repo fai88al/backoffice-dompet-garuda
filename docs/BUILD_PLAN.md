@@ -12,8 +12,9 @@ Work on branch feat/scaffold, open a PR against main.
 
 Scaffold the Dompet Digital backoffice frontend:
 
-1. Initialize Next.js 14 App Router project with Bun and TypeScript strict mode.
-   Project name: dompet-garuda-backoffice
+1. Initialize Next.js 16 App Router project using:
+  bunx create-next-app@latest . \
+  --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
 
 2. Install and configure:
    - Tailwind CSS
