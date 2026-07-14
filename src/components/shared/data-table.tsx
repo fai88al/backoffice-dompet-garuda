@@ -14,6 +14,7 @@ interface DataTableColumn<T> {
   header: string
   cell: (row: T) => React.ReactNode
   className?: string
+  headerClassName?: string
 }
 
 // Reusable table wrapper with built-in loading/empty states.
@@ -39,7 +40,9 @@ export function DataTable<T>({
       <TableHeader>
         <TableRow>
           {columns.map((col) => (
-            <TableHead key={col.header}>{col.header}</TableHead>
+            <TableHead key={col.header} className={cn('px-4', col.headerClassName)}>
+              {col.header}
+            </TableHead>
           ))}
         </TableRow>
       </TableHeader>
@@ -48,7 +51,7 @@ export function DataTable<T>({
           Array.from({ length: skeletonRows }).map((_, i) => (
             <TableRow key={i}>
               {columns.map((col) => (
-                <TableCell key={col.header}>
+                <TableCell key={col.header} className="px-4 py-3">
                   <Skeleton className="h-4 w-full" />
                 </TableCell>
               ))}
@@ -56,7 +59,7 @@ export function DataTable<T>({
           ))
         ) : data.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={columns.length}>
+            <TableCell colSpan={columns.length} className="px-4 py-3">
               <EmptyState title={emptyMessage} />
             </TableCell>
           </TableRow>
@@ -68,7 +71,7 @@ export function DataTable<T>({
               className={cn(onRowClick && 'cursor-pointer')}
             >
               {columns.map((col) => (
-                <TableCell key={col.header} className={col.className}>
+                <TableCell key={col.header} className={cn('px-4 py-3', col.className)}>
                   {col.cell(row)}
                 </TableCell>
               ))}

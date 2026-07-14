@@ -137,23 +137,25 @@ export default function UserDetailPage() {
         </CardContent>
       </Card>
 
-      <Card className="max-w-lg">
+      <Card>
         <CardHeader>
           <CardTitle>Top Up Balance</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onTopUp)} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="amount">Amount (Rp)</Label>
-              <Input id="amount" type="number" min={1000} step={1} {...register('amount')} />
-              {errors.amount && (
-                <p className="text-sm text-destructive">{errors.amount.message}</p>
-              )}
-            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="amount">Amount (Rp)</Label>
+                <Input id="amount" type="number" min={1000} step={1} {...register('amount')} />
+                {errors.amount && (
+                  <p className="text-sm text-destructive">{errors.amount.message}</p>
+                )}
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="reference">Reference</Label>
-              <Input id="reference" placeholder="Optional" {...register('reference')} />
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="reference">Reference</Label>
+                <Input id="reference" placeholder="Optional" {...register('reference')} />
+              </div>
             </div>
 
             {topUpError && (
