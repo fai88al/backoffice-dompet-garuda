@@ -13,9 +13,10 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { api } from '@/lib/api'
-import { setToken } from '@/lib/auth'
+import { setAuth } from '@/lib/auth'
 
 const loginSchema = z.object({
+  email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
@@ -36,11 +37,11 @@ export default function LoginPage() {
   const onSubmit = async (values: LoginFormValues) => {
     setServerError(null)
     try {
-      const { token } = await api.auth.login(values.password)
-      setToken(token)
+      const { token, role, username } = await api.auth.login(values.email, values.password)
+      setAuth(token, role, username)
       router.push('/dashboard')
     } catch {
-      setServerError('Invalid password')
+      setServerError('Invalid email or password')
     }
   }
 
@@ -48,10 +49,23 @@ export default function LoginPage() {
     <Card className="w-full max-w-sm">
       <CardHeader>
         <CardTitle>Dompet Digital Backoffice</CardTitle>
-        <CardDescription>Sign in with the admin password to continue.</CardDescription>
+        <CardDescription>Sign in with your admin account to continue.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="username"
+              {...register('email')}
+            />
+            {errors.email && (
+              <p className="text-sm text-destructive">{errors.email.message}</p>
+            )}
+          </div>
+
           <div className="flex flex-col gap-2">
             <Label htmlFor="password">Password</Label>
             <Input

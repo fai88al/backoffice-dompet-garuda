@@ -1,13 +1,24 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Menu, LogOut } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Sidebar } from '@/components/layout/sidebar'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
+import { getUsername } from '@/lib/auth'
 
 export function Topbar({ onLogout }: { onLogout: () => void }) {
+  const [username, setUsername] = useState<string | null>(null)
+
+  useEffect(() => {
+    // One-time client read of localStorage on mount — not a derived-state loop, so the
+    // set-state-in-effect lint rule doesn't apply here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUsername(getUsername())
+  }, [])
+
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4 md:px-6">
       <div className="flex items-center gap-2">
@@ -24,7 +35,7 @@ export function Topbar({ onLogout }: { onLogout: () => void }) {
             <Sidebar />
           </SheetContent>
         </Sheet>
-        <span className="text-sm font-medium text-muted-foreground">Admin</span>
+        <span className="text-sm font-medium text-muted-foreground">{username}</span>
       </div>
 
       <div className="flex items-center gap-2">

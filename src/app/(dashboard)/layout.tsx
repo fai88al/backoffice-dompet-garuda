@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 
 import { Sidebar } from '@/components/layout/sidebar'
 import { Topbar } from '@/components/layout/topbar'
-import { isAuthenticated, clearToken } from '@/lib/auth'
+import { isAuthenticated, clearAuth } from '@/lib/auth'
 
 export default function DashboardLayout({
   children,
@@ -27,7 +27,7 @@ export default function DashboardLayout({
   }, [router])
 
   const handleLogout = () => {
-    clearToken()
+    clearAuth()
     router.replace('/login')
   }
 

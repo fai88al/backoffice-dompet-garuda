@@ -1,4 +1,4 @@
-import { getToken, clearToken } from '@/lib/auth'
+import { getToken, clearAuth } from '@/lib/auth'
 import type {
   User,
   UserDetail,
@@ -16,6 +16,7 @@ import type {
 } from '@/types/api'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.dompetgaruda.com'
+const LOGIN_PATH = '/admin/auth/login'
 
 async function request<T>(
   path: string,
@@ -30,8 +31,11 @@ async function request<T>(
       ...options.headers,
     },
   })
-  if (res.status === 401) {
-    clearToken()
+  // A 401 from the login endpoint means wrong credentials, not an expired
+  // session — let it fall through so the login page can show its own error
+  // instead of force-redirecting and wiping the form.
+  if (res.status === 401 && path !== LOGIN_PATH) {
+    clearAuth()
     window.location.href = '/login'
     throw new Error('Unauthorized')
   }
@@ -44,11 +48,11 @@ async function request<T>(
 
 export const api = {
   auth: {
-    login: (password: string) =>
-      request<{ token: string; type: string }>('/admin/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ password }),
-      }),
+    login: (username: string, password: string) =>
+      request<{ token: string; type: string; username: string; role: string }>(
+        '/admin/auth/login',
+        { method: 'POST', body: JSON.stringify({ username, password }) }
+      ),
   },
   users: {
     list: () => request<User[]>('/admin/users'),
