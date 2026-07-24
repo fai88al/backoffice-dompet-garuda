@@ -8,9 +8,10 @@
 
 ## 1. What this project is
 
-A web-based backoffice panel for Dompet Digital administrators. It connects to the
-existing REST API at `https://api.dompetgaruda.com` and provides a UI for managing
-users, devices, sync batches, and flagged transactions.
+A web-based backoffice panel for Dompet Digital administrators and writers. It connects to
+the existing REST API at `https://api.dompetgaruda.com` and provides a UI for managing
+users, devices, sync batches, and flagged transactions. A future writer role will manage
+articles here too (not yet built — confirm scope before starting).
 
 Deployed at: `https://backoffice.dompetgaruda.com`
 
@@ -156,7 +157,7 @@ src/
       error-boundary.tsx
   lib/
     api.ts                # ALL API calls live here — single source of truth
-    auth.ts               # Token read/write from localStorage
+    auth.ts               # Token/role/username read/write from localStorage
     utils.ts              # cn() helper and formatters
   types/
     api.ts                # TypeScript types for all API responses
@@ -166,24 +167,47 @@ src/
 
 ## 5. Authentication
 
-- On login, call `POST /admin/auth/login` with the password.
-- Store the returned token in `localStorage` as `dompet_admin_token`.
+- Login form collects **email + password** (the backend's `username` field holds an email
+  address, e.g. `rizki@dompetgaruda.com`).
+- Call `POST /admin/auth/login` with `{ username, password }` (field name stays `username`
+  to match the backend, even though the UI labels it "Email").
+- Store the returned JWT in `localStorage` as `dompet_admin_token`. Also store `username`
+  and `role` for display and future role-gating (writer dashboard vs admin dashboard).
 - All subsequent API calls include `Authorization: Bearer {token}` header.
-- On any `401` response from the API, clear the token and redirect to `/login`.
-- **No JWT decoding, no refresh tokens, no sessions** — the token is opaque.
-  This is prototype-grade auth (see PRD NG1).
+- On any `401` response, clear all stored auth values and redirect to `/login`.
+- No manual JWT decoding needed client-side — role and username come from the login
+  response, not from parsing the token.
 
 ```ts
 // lib/auth.ts
 const TOKEN_KEY = 'dompet_admin_token'
+const ROLE_KEY = 'dompet_admin_role'
+const USERNAME_KEY = 'dompet_admin_username'
+
 export const getToken = () => localStorage.getItem(TOKEN_KEY)
-export const setToken = (token: string) => localStorage.setItem(TOKEN_KEY, token)
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY)
+export const getRole = () => localStorage.getItem(ROLE_KEY)
+export const getUsername = () => localStorage.getItem(USERNAME_KEY)
+
+export const setAuth = (token: string, role: string, username: string) => {
+  localStorage.setItem(TOKEN_KEY, token)
+  localStorage.setItem(ROLE_KEY, role)
+  localStorage.setItem(USERNAME_KEY, username)
+}
+
+export const clearAuth = () => {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(ROLE_KEY)
+  localStorage.removeItem(USERNAME_KEY)
+}
+
 export const isAuthenticated = () => !!getToken()
 ```
 
 Route protection: check `isAuthenticated()` in the dashboard layout. If false, redirect
 to `/login`. Use `useRouter` from next/navigation — do not use middleware for this prototype.
+
+**Role values:** `ADMIN` or `WRITER` (writer role UI not yet built — confirm scope before
+building any writer-specific pages or gating).
 
 ---
 
@@ -210,7 +234,7 @@ async function request<T>(
     },
   })
   if (res.status === 401) {
-    clearToken()
+    clearAuth()
     window.location.href = '/login'
     throw new Error('Unauthorized')
   }
@@ -224,11 +248,11 @@ async function request<T>(
 // Exported API functions — one per endpoint
 export const api = {
   auth: {
-    login: (password: string) =>
-      request<{ token: string; type: string }>('/admin/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ password }),
-      }),
+    login: (username: string, password: string) =>
+      request<{ token: string; type: string; username: string; role: string }>(
+        '/admin/auth/login',
+        { method: 'POST', body: JSON.stringify({ username, password }) }
+      ),
   },
   users: {
     list: () => request<User[]>('/admin/users'),
@@ -287,8 +311,8 @@ Sync Batches → /sync
 Flagged      → /flagged
 ```
 
-The sidebar shows the current user's auth status (just "Admin" for prototype)
-and a logout button (clears token, redirects to /login).
+The sidebar/topbar shows the logged-in user's **email** (`getUsername()`) — not a hardcoded
+"Admin" label — plus a logout button (calls `clearAuth()`, redirects to `/login`).
 
 ---
 
@@ -322,7 +346,9 @@ Tables show skeleton rows while data loads.
 
 ### Error states
 On API error, show a shadcn/ui `Alert` with the error message. Never show a raw
-`Error` object or stack trace to the user.
+`Error` object or stack trace to the user. For login specifically, never reveal
+whether the email or the password was wrong — always show a generic
+"Invalid email or password."
 
 ### Empty states
 Use `<EmptyState />` with a lucide icon and a short message when a list returns `[]`.
@@ -340,7 +366,8 @@ NEXT_PUBLIC_API_URL=https://api.dompetgaruda.com
 ```
 
 Commit `.env.example` with this value. The real `.env.local` is gitignored.
-Never put the admin token in environment variables — it lives in localStorage only.
+Never put the admin token, JWT secret, or any password in environment variables —
+auth tokens live in localStorage only, issued fresh per login by the backend.
 
 ---
 
@@ -349,7 +376,7 @@ Never put the admin token in environment variables — it lives in localStorage 
 - Work on feature branches (`feat/...`). Open PRs against `main`.
 - Never push directly to `main`.
 - Keep PRs focused — one page or one feature per PR.
-- Always use my github account as contributor, don't use Claude
+- Always use my GitHub account as contributor — never Claude.
 
 ---
 
@@ -357,10 +384,12 @@ Never put the admin token in environment variables — it lives in localStorage 
 
 - Don't call `fetch` directly from components — use `lib/api.ts`.
 - Don't add Redux, Zustand, React Query, Axios, or SWR.
-- Don't build writer role, article management, or landing page — phase 3.
-- Don't add multi-admin accounts or role-based access — prototype has one admin.
+- Don't build writer role UI, article management, or landing page — not yet scoped,
+  confirm before starting.
+- Don't add public signup or self-registration — accounts are backend-seeded/admin-created only.
 - Don't add animations or page transitions — keep it fast and simple.
-- Don't hardcode the API token anywhere in code or environment variables.
+- Don't hardcode any token, password, or JWT secret anywhere in code or environment variables.
 - Don't edit files in `components/ui/` — these are shadcn/ui generated files.
 - Don't use `any` type in TypeScript — define proper types in `types/api.ts`.
 - Don't use `<a>` tags for navigation — use Next.js `<Link>`.
+- Don't reveal in the UI whether an email or a password was the reason login failed.

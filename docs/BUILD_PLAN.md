@@ -2,276 +2,157 @@
 
 Hand these prompts to Claude Code one at a time. Review and merge each PR before the next.
 
----
+**Progress:** PR1–PR7 ✅ all merged and deployed. Backoffice is live at
+`backoffice.dompetgaruda.com`, connected to the production API.
 
-## PR1 — Scaffold
+**Next: PR8 — real login (email + password against real backend accounts)**
 
-```
-Read CLAUDE.md fully before writing a single line.
-Work on branch feat/scaffold, open a PR against main.
-
-Scaffold the Dompet Digital backoffice frontend:
-
-1. Initialize Next.js 16 App Router project using:
-  bunx create-next-app@latest . \
-  --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
-
-2. Install and configure:
-   - Tailwind CSS
-   - shadcn/ui (init with New York style, CSS variables enabled)
-   - next-themes
-   - react-hook-form
-   - zod
-   - recharts
-   - lucide-react (comes with shadcn/ui)
-
-3. Install these shadcn/ui components:
-   button, input, label, card, badge, table, dialog, alert,
-   sheet, skeleton, sonner (toast), dropdown-menu, avatar,
-   separator, tooltip
-
-4. Apply the color palette from CLAUDE.md §3:
-   - Update globals.css with the CSS variable overrides
-     for both :root (light) and .dark
-   - Update tailwind.config.ts with the custom colors
-
-5. Configure next-themes:
-   - Wrap root layout with ThemeProvider (attribute="class",
-     defaultTheme="system", enableSystem)
-
-6. Create the complete folder structure from CLAUDE.md §4.
-   Create placeholder files (empty components with a comment)
-   for every file listed. Do not implement logic yet.
-
-7. Create lib/auth.ts, lib/api.ts, lib/utils.ts with the
-   exact content from CLAUDE.md §5 and §6.
-   Create types/api.ts with these TypeScript types:
-   - User, UserDetail, CreateUserRequest
-   - Device, DeviceDetail, DeviceStatus, RegisterDeviceRequest,
-     RegisterDeviceResponse
-   - TopUpRequest, TopUpResponse
-   - SyncBatch
-   - FlaggedTransaction
-   - Certificate
-   Derive field names from the API response shapes at
-   https://api.dompetgaruda.com/v3/api-docs
-
-8. Create .env.example with NEXT_PUBLIC_API_URL=https://api.dompetgaruda.com
-   Add .env.local to .gitignore.
-
-9. Verify: bun dev starts without errors.
-   The app renders at localhost:3000.
-
-Open PR with confirmation that bun dev works and colors
-are visible in the browser.
-```
+This depends on the backend's `feat/admin-user-auth` PR being merged and verified
+(confirmed: `POST /admin/auth/login` now accepts `{ username, password }` and issues a
+JWT; old `ADMIN_API_TOKEN` returns 401).
 
 ---
 
-## PR2 — Layout + Login
+## Completed (for reference)
 
-```
-Read CLAUDE.md fully. Work on branch feat/layout-login.
-
-1. Root layout (app/layout.tsx):
-   - ThemeProvider wrapping everything
-   - Sonner Toaster component
-
-2. Auth layout (app/(auth)/layout.tsx):
-   - Centered card layout, full height, surface background
-   - Shows the Dompet Digital logo/wordmark (text is fine)
-
-3. Login page (app/(auth)/login/page.tsx):
-   - Card with "Dompet Digital Backoffice" heading
-   - Password field (not email — single admin password)
-   - Submit button using primary color
-   - react-hook-form + zod: password required, min 8 chars
-   - On submit: call api.auth.login(password)
-   - On success: setToken(token), redirect to /dashboard
-   - On error: show Alert with "Invalid password"
-   - Loading state: disable button + show spinner during request
-   - Dark mode works correctly
-
-4. Dashboard layout (app/(dashboard)/layout.tsx):
-   - Check isAuthenticated() — if false, redirect to /login
-   - Fixed sidebar (desktop) with nav items from CLAUDE.md §7
-   - Mobile: sidebar in Sheet (hamburger button in topbar)
-   - Topbar: page title area + dark mode toggle + logout button
-   - Logout: clearToken() + redirect to /login
-
-5. Sidebar component (components/layout/sidebar.tsx):
-   - Nav items with lucide icons:
-     LayoutDashboard → Dashboard
-     Users → Users
-     Smartphone → Devices
-     RefreshCw → Sync Batches
-     AlertTriangle → Flagged
-   - Active state uses primary color
-   - Collapses gracefully on mobile
-
-6. ThemeToggle component (components/layout/theme-toggle.tsx):
-   - Icon button: Sun in light mode, Moon in dark mode
-   - Uses useTheme() from next-themes
-
-7. Dashboard page (app/(dashboard)/dashboard/page.tsx):
-   - Placeholder: "Dashboard coming soon" card
-   - Just enough to confirm the layout renders
-
-Open PR with screenshots of: login page (light + dark),
-dashboard layout (desktop + mobile).
-```
+1. ✅ **PR1 — Scaffold.** Next.js 16, Bun, shadcn/ui, Tailwind, color palette, folder
+   structure, `lib/api.ts` and `lib/auth.ts` skeletons, TypeScript types.
+2. ✅ **PR2 — Layout + Login.** Root layout, auth layout, login page (password-only —
+   now superseded by PR8), dashboard layout with sidebar/topbar, theme toggle.
+3. ✅ **PR3 — Dashboard overview.** Stats cards, recent flagged transactions, recent sync
+   batches, shared components (status-badge, page-header, empty-state, data-table).
+4. ✅ **PR4 — Users page.** List, create, detail + top-up.
+5. ✅ **PR5 — Devices page.** List, register (with one-time token modal), detail +
+   status update.
+6. ✅ **PR6 — Sync Batches + Flagged pages.** Both list views, flagged resolve action.
+7. ✅ **PR7 — Deployment.** Dockerfile, GitHub Actions CI/CD, deployed to
+   `backoffice.dompetgaruda.com` via Caddy.
 
 ---
 
-## PR3 — Dashboard overview page
+## Current phase
+
+8. **PR8 — Real login (email + password).** Replaces the password-only login with a
+   real email + password form against the backend's new per-user accounts. Updates
+   `lib/auth.ts` to store role and username alongside the token. *This PR is next.*
+
+## Not yet scoped (confirm with Faisal before starting)
+
+9. **Writer role dashboard.** A separate view (or role-gated section) for the `WRITER`
+   role once article management exists on the backend. Not yet built — do not start
+   without explicit scope confirmation.
+10. **Article management UI.** Depends on backend article CRUD endpoints (not yet built).
+11. **Password change page.** Depends on the backend's password-change endpoint (not yet
+    built) — needed so the seeded temporary passwords can be rotated from the UI instead
+    of a DB migration.
+
+---
+
+## Next prompt to paste — PR8 (real login)
 
 ```
-Read CLAUDE.md fully. Work on branch feat/dashboard.
+Read CLAUDE.md fully — the auth section has changed to
+email + password against real backend accounts.
+Work on branch feat/real-login, open a PR against main.
 
-Dashboard page (app/(dashboard)/dashboard/page.tsx):
+This depends on the backend PR feat/admin-user-auth being
+merged and deployed (confirmed: POST /admin/auth/login now
+accepts { username, password } and returns a JWT + role +
+username; the old static token returns 401).
 
-1. Stats cards row (4 cards):
-   - Total Users (api.users.list(), count)
-   - Total Devices (api.devices.list(), count)
-   - Active Certificates (api.certificates.list('ACTIVE'), count)
-   - Unresolved Flags (api.flagged.list(false), count)
-   Each card: shadcn Card with a lucide icon, big number,
-   and a small label. Loading: Skeleton.
+1. Update lib/auth.ts to the version in CLAUDE.md §5
+   (stores token, role, username — not just a token):
 
-2. Recent Flagged Transactions table (last 5):
-   - Columns: Reason, Detail (truncated), Created At
-   - StatusBadge for reason
-   - Link to /flagged for "View all"
+   const TOKEN_KEY = 'dompet_admin_token'
+   const ROLE_KEY = 'dompet_admin_role'
+   const USERNAME_KEY = 'dompet_admin_username'
 
-3. Recent Sync Batches table (last 5):
-   - Columns: Batch ID (truncated), Status, Received At
-   - StatusBadge for status
-   - Link to /sync for "View all"
+   export const getToken = () => localStorage.getItem(TOKEN_KEY)
+   export const getRole = () => localStorage.getItem(ROLE_KEY)
+   export const getUsername = () => localStorage.getItem(USERNAME_KEY)
 
-4. All data fetched in parallel with Promise.all.
-   Loading state: Skeleton rows.
-   Error state: Alert with message.
+   export const setAuth = (token: string, role: string, username: string) => {
+     localStorage.setItem(TOKEN_KEY, token)
+     localStorage.setItem(ROLE_KEY, role)
+     localStorage.setItem(USERNAME_KEY, username)
+   }
 
-Create shared components:
-- components/shared/status-badge.tsx (per CLAUDE.md §9)
-- components/shared/page-header.tsx
-- components/shared/empty-state.tsx
-- components/shared/data-table.tsx
+   export const clearAuth = () => {
+     localStorage.removeItem(TOKEN_KEY)
+     localStorage.removeItem(ROLE_KEY)
+     localStorage.removeItem(USERNAME_KEY)
+   }
 
-Open PR with screenshot of dashboard with real API data.
+   export const isAuthenticated = () => !!getToken()
+
+   Remove old setToken/clearToken and update every caller.
+
+2. Update lib/api.ts:
+   - auth.login signature becomes (username: string, password: string):
+     login: (username: string, password: string) =>
+       request<{ token: string; type: string; username: string; role: string }>(
+         '/admin/auth/login',
+         { method: 'POST', body: JSON.stringify({ username, password }) }
+       ),
+   - In the request() function's 401 handler, call clearAuth()
+     instead of clearToken().
+
+3. Update the login page (app/(auth)/login/page.tsx):
+   - Add an Email field ABOVE Password (both required).
+     Use type="email", label "Email".
+   - zod schema: email (valid email format), password
+     (required, min 8 chars)
+   - On submit: api.auth.login(email, password)
+   - On success: setAuth(token, role, username),
+     redirect to /dashboard
+   - On error: generic Alert "Invalid email or password"
+     (never reveal which field was wrong — CLAUDE.md §12)
+   - Keep existing loading state and dark mode support
+
+4. Update the sidebar/topbar (components/layout/sidebar.tsx
+   and/or topbar) to show getUsername() instead of the
+   hardcoded "Admin" label.
+
+5. Update every call site that used clearToken() for logout
+   to use clearAuth() instead.
+
+Open PR with screenshots of the updated login form (light +
+dark mode) and confirmation that login works end-to-end
+against the live API with both seeded accounts
+(rizki@dompetgaruda.com, faisal@dompetgaruda.com).
 ```
 
 ---
 
-## PR4 — Users page
+## After PR8 merges and deploys — verification checklist
 
+```bash
+# 1. Open the live login page
+open https://backoffice.dompetgaruda.com/login
+
+# 2. Log in with each seeded account and confirm:
+#    - Email + password fields both present
+#    - Wrong password shows "Invalid email or password" (generic, not specific)
+#    - Correct credentials redirect to /dashboard
+#    - Sidebar/topbar shows the logged-in email, not "Admin"
+#    - Dark mode toggle still works on the login page
+
+# 3. Confirm logout clears everything:
+#    - Click logout
+#    - Should redirect to /login
+#    - Refreshing /dashboard directly should redirect back to /login
+#      (localStorage cleared)
 ```
-Read CLAUDE.md fully. Work on branch feat/users.
 
-1. Users list (app/(dashboard)/users/page.tsx):
-   - PageHeader: "Users" + "Create User" button
-   - Table: Full Name, Phone, Status, Online Balance
-     (formatted as Rp X,XXX,XXX), Device Count, Created At
-   - StatusBadge for status
-   - Row click → /users/{userId}
-   - EmptyState if no users
-
-2. Create user (app/(dashboard)/users/new/page.tsx):
-   - Form: Full Name (required), Phone (required, +62...)
-   - On submit: api.users.create()
-   - On success: toast + redirect to /users
-   - On error: Alert with message
-   - Cancel → back to /users
-
-3. User detail (app/(dashboard)/users/[userId]/page.tsx):
-   - Info card: userId, status, createdAt, onlineBalance, deviceCount
-   - Top-up form inline:
-     Amount (number, min 1000), Reference (optional)
-     On success: toast + refresh balance
-   - Devices table with link to /devices/{deviceId}
-
-Open PR with screenshots of all three pages.
-```
+Only after this checklist passes should any writer-role or article-management work begin —
+those depend on backend endpoints that don't exist yet (see "Not yet scoped" above).
 
 ---
 
-## PR5 — Devices page
+## Standing reminders for every task
 
-```
-Read CLAUDE.md fully. Work on branch feat/devices.
-
-1. Devices list (app/(dashboard)/devices/page.tsx):
-   - PageHeader: "Devices" + "Register Device" button
-   - Table: Device ID (truncated, monospace), User Phone,
-     Status, Last Counter, Registered At,
-     Active Certificate amount or "None"
-   - StatusBadge for status
-
-2. Register device (app/(dashboard)/devices/new/page.tsx):
-   - Form: User select (from api.users.list()),
-     Public Key (textarea), Device Label (optional)
-   - On success: show one-time token modal with copy button
-     and WARNING message. After dismiss: redirect to /devices
-
-3. Device detail (app/(dashboard)/devices/[deviceId]/page.tsx):
-   - Info card with all device fields
-   - Status update: Activate / Suspend / Lock buttons
-     Each with ConfirmDialog before calling api
-   - Active certificate card if present
-
-Create components/shared/confirm-dialog.tsx.
-
-Open PR with screenshots including one-time token modal.
-```
-
----
-
-## PR6 — Sync Batches + Flagged pages
-
-```
-Read CLAUDE.md fully. Work on branch feat/sync-flagged.
-
-1. Sync batches (app/(dashboard)/sync/page.tsx):
-   - Table: Batch ID, Device ID, Status, Synced After Expiry,
-     Received At, Processed At, Error Reason
-   - StatusBadge for status
-
-2. Flagged transactions (app/(dashboard)/flagged/page.tsx):
-   - Toggle: Unresolved / All
-   - Table: Flag ID, Reason, Detail, Created At, Resolved,
-     Batch ID, Certificate ID
-   - Resolve button per unresolved row with ConfirmDialog
-   - On resolve: toast + refresh
-
-Open PR with screenshots of both pages.
-```
-
----
-
-## PR7 — Deployment
-
-```
-Read CLAUDE.md fully. Work on branch feat/deployment.
-
-1. Dockerfile (multi-stage):
-   Stage 1 deps: install bun, install dependencies
-   Stage 2 builder: bun run build
-   Stage 3 runner: copy .next/standalone, run as non-root,
-   EXPOSE 3000
-
-2. Set output: 'standalone' in next.config.ts.
-
-3. .github/workflows/deploy.yml:
-   - build-and-push: build + push to GHCR
-   - deploy: SSH to VPS, docker compose up -d backoffice
-   Trigger: push to main + workflow_dispatch
-
-4. Document in README.md:
-   - How to add backoffice service to docker-compose.prod.yml
-     in the backend repo
-   - How to add backoffice.dompetgaruda.com to Caddyfile
-   - DNS: A record backoffice → 72.60.74.117
-
-Open PR. After merge, the backend repo needs a companion
-PR to add the service and Caddyfile block.
-```
+- One PR per task; keep them small and reviewable. Stop and ask if scope is unclear.
+- Never push to main; never commit as the AI — commits are authored by your GitHub account.
+- Never hardcode tokens, passwords, or secrets anywhere in this codebase.
+- If a backend dependency (endpoint, field, behavior) isn't confirmed live yet, say so
+  and wait rather than guessing at the shape of an API that doesn't exist.
