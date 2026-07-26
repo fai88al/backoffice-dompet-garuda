@@ -115,3 +115,30 @@ export interface Certificate {
   expiresAt: string
   settledAt: string | null
 }
+
+export type ArticleStatus = 'DRAFT' | 'PUBLISHED'
+
+export interface Article {
+  id: string
+  title: string
+  slug: string
+  contentHtml: string
+  coverImageUrl: string | null
+  status: ArticleStatus
+  authorId: string
+  publishedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateArticleRequest {
+  title: string
+  contentHtml: string
+  coverImageUrl?: string
+}
+
+export interface UpdateArticleRequest {
+  title?: string
+  contentHtml?: string
+  coverImageUrl?: string
+}
