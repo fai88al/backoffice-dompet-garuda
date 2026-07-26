@@ -40,13 +40,20 @@ export function Sidebar({
   const pathname = usePathname()
   const navItems = role === 'WRITER' ? writerNavItems : adminNavItems
 
+  // Nav items can be prefixes of one another (e.g. /articles and /articles/new).
+  // A given pathname may match more than one item's href — only the item with
+  // the longest (most specific) matching href should be highlighted.
+  const matchLength = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`) ? href.length : -1
+  const bestMatchLength = Math.max(...navItems.map(({ href }) => matchLength(href)))
+
   return (
     <nav className="flex h-full w-full flex-col gap-1 p-4">
       <span className="mb-4 px-2 text-lg font-semibold tracking-tight text-primary">
         Dompet Digital
       </span>
       {navItems.map(({ href, label, icon: Icon }) => {
-        const isActive = pathname === href || pathname.startsWith(`${href}/`)
+        const isActive = matchLength(href) >= 0 && matchLength(href) === bestMatchLength
         return (
           <Link
             key={href}

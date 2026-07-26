@@ -72,12 +72,24 @@ function ToolbarButton({
   )
 }
 
+// Cheap defense-in-depth guard — only allow http(s) URLs to be inserted into content.
+function isSafeUrl(value: string) {
+  return /^https?:\/\//i.test(value)
+}
+
 function LinkPopover({ editor }: { editor: Editor }) {
   const [url, setUrl] = useState('')
   const [open, setOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setError(null)
+      }}
+    >
       <PopoverTrigger asChild>
         <span>
           <ToolbarButton
@@ -98,12 +110,19 @@ function LinkPopover({ editor }: { editor: Editor }) {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
         />
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <Button
           type="button"
           size="sm"
           onClick={() => {
-            if (url) editor.chain().focus().setLink({ href: url }).run()
+            if (!url) return
+            if (!isSafeUrl(url)) {
+              setError('Link must start with http:// or https://')
+              return
+            }
+            editor.chain().focus().setLink({ href: url }).run()
             setUrl('')
+            setError(null)
             setOpen(false)
           }}
         >
@@ -117,9 +136,16 @@ function LinkPopover({ editor }: { editor: Editor }) {
 function ImagePopover({ editor }: { editor: Editor }) {
   const [url, setUrl] = useState('')
   const [open, setOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setError(null)
+      }}
+    >
       <PopoverTrigger asChild>
         <span>
           <ToolbarButton label="Insert image" onClick={() => setOpen(true)}>
@@ -136,12 +162,19 @@ function ImagePopover({ editor }: { editor: Editor }) {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
         />
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <Button
           type="button"
           size="sm"
           onClick={() => {
-            if (url) editor.chain().focus().setImage({ src: url }).run()
+            if (!url) return
+            if (!isSafeUrl(url)) {
+              setError('Image URL must start with http:// or https://')
+              return
+            }
+            editor.chain().focus().setImage({ src: url }).run()
             setUrl('')
+            setError(null)
             setOpen(false)
           }}
         >
@@ -237,6 +270,9 @@ export function ArticleForm({ article }: { article?: Article }) {
   const {
     register,
     handleSubmit,
+    watch,
+    getValues,
+    trigger,
     formState: { errors },
   } = useForm<ArticleFormValues>({
     resolver: zodResolver(articleSchema),
@@ -252,19 +288,29 @@ export function ArticleForm({ article }: { article?: Article }) {
     content: article?.contentHtml ?? '',
   })
 
+  const openConfirm = (action: ConfirmAction) => {
+    setConfirmAction(action)
+  }
+
+  // Shared create/update branching, reused by both Save Draft and the
+  // save-then-publish flow so the logic only lives in one place.
+  const saveArticle = async (values: ArticleFormValues, contentHtml: string) => {
+    const payload = {
+      title: values.title,
+      contentHtml,
+      coverImageUrl: values.coverImageUrl || undefined,
+    }
+    return savedArticle
+      ? await api.articles.update(savedArticle.id, payload)
+      : await api.articles.create(payload)
+  }
+
   const handleSaveDraft = handleSubmit(async (values) => {
     setServerError(null)
     setSaving(true)
     try {
       const contentHtml = editor?.getHTML() ?? ''
-      const payload = {
-        title: values.title,
-        contentHtml,
-        coverImageUrl: values.coverImageUrl || undefined,
-      }
-      const result = savedArticle
-        ? await api.articles.update(savedArticle.id, payload)
-        : await api.articles.create(payload)
+      const result = await saveArticle(values, contentHtml)
       setSavedArticle(result)
       toast.success('Draft saved')
     } catch (err) {
@@ -280,9 +326,20 @@ export function ArticleForm({ article }: { article?: Article }) {
     setServerError(null)
     try {
       if (confirmAction === 'publish') {
-        const updated = await api.articles.publish(savedArticle.id)
+        // Publish always acts on whatever is currently in the form/editor —
+        // save first so we never publish a stale server snapshot.
+        const isValid = await trigger()
+        if (!isValid) {
+          throw new Error('Please fix the form errors before publishing.')
+        }
+        const values = getValues()
+        const contentHtml = editor?.getHTML() ?? ''
+        const saved = await saveArticle(values, contentHtml)
+        setSavedArticle(saved)
+        const updated = await api.articles.publish(saved.id)
         setSavedArticle(updated)
         toast.success('Article published')
+        setPreviewOpen(false)
         router.push('/articles')
       } else if (confirmAction === 'unpublish') {
         const updated = await api.articles.unpublish(savedArticle.id)
@@ -295,6 +352,10 @@ export function ArticleForm({ article }: { article?: Article }) {
       }
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Action failed')
+      // The Preview dialog sits on top of the main card's Alert — close it so
+      // a publish failure (the only action launched from inside a dialog) is
+      // actually visible instead of hidden behind the still-open modal.
+      setPreviewOpen(false)
     } finally {
       setConfirming(false)
       setConfirmAction(null)
@@ -379,12 +440,12 @@ export function ArticleForm({ article }: { article?: Article }) {
               Preview
             </Button>
             {savedArticle?.status === 'PUBLISHED' && (
-              <Button type="button" variant="outline" onClick={() => setConfirmAction('unpublish')}>
+              <Button type="button" variant="outline" onClick={() => openConfirm('unpublish')}>
                 Unpublish
               </Button>
             )}
             {isEditing && (
-              <Button type="button" variant="destructive" onClick={() => setConfirmAction('delete')}>
+              <Button type="button" variant="destructive" onClick={() => openConfirm('delete')}>
                 Delete
               </Button>
             )}
@@ -398,44 +459,46 @@ export function ArticleForm({ article }: { article?: Article }) {
             <DialogTitle>Preview</DialogTitle>
           </DialogHeader>
           <ArticlePreview
-            title={savedArticle?.title ?? ''}
-            coverImageUrl={savedArticle?.coverImageUrl ?? null}
+            title={watch('title')}
+            coverImageUrl={watch('coverImageUrl') || null}
             contentHtml={editor.getHTML()}
           />
           {savedArticle?.status !== 'PUBLISHED' && (
-            <Button onClick={() => setConfirmAction('publish')}>Publish</Button>
+            <Button onClick={() => openConfirm('publish')}>Publish</Button>
           )}
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog
-        open={!!confirmAction}
-        onOpenChange={(open) => {
-          if (!open) setConfirmAction(null)
-        }}
-        title={
-          confirmAction === 'publish'
-            ? 'Publish this article?'
-            : confirmAction === 'unpublish'
-              ? 'Unpublish this article?'
-              : 'Delete this article?'
-        }
-        description={
-          confirmAction === 'delete'
-            ? 'This permanently removes the article. This cannot be undone.'
-            : 'This changes the article visibility on the public site.'
-        }
-        confirmLabel={
-          confirmAction === 'publish'
-            ? 'Publish'
-            : confirmAction === 'unpublish'
-              ? 'Unpublish'
-              : 'Delete'
-        }
-        onConfirm={handleConfirmedAction}
-        loading={confirming}
-        variant={confirmAction === 'delete' ? 'destructive' : 'default'}
-      />
+      {confirmAction && (
+        <ConfirmDialog
+          open={!!confirmAction}
+          onOpenChange={(open) => {
+            if (!open) setConfirmAction(null)
+          }}
+          title={
+            confirmAction === 'publish'
+              ? 'Publish this article?'
+              : confirmAction === 'unpublish'
+                ? 'Unpublish this article?'
+                : 'Delete this article?'
+          }
+          description={
+            confirmAction === 'delete'
+              ? 'This permanently removes the article. This cannot be undone.'
+              : 'This changes the article visibility on the public site.'
+          }
+          confirmLabel={
+            confirmAction === 'publish'
+              ? 'Publish'
+              : confirmAction === 'unpublish'
+                ? 'Unpublish'
+                : 'Delete'
+          }
+          onConfirm={handleConfirmedAction}
+          loading={confirming}
+          variant={confirmAction === 'delete' ? 'destructive' : 'default'}
+        />
+      )}
     </div>
   )
 }
