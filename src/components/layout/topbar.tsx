@@ -9,7 +9,13 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { getUsername } from '@/lib/auth'
 
-export function Topbar({ onLogout }: { onLogout: () => void }) {
+export function Topbar({
+  role,
+  onLogout,
+}: {
+  role: 'ADMIN' | 'WRITER'
+  onLogout: () => void
+}) {
   const [username, setUsername] = useState<string | null>(null)
 
   useEffect(() => {
@@ -32,7 +38,7 @@ export function Topbar({ onLogout }: { onLogout: () => void }) {
             <SheetHeader className="sr-only">
               <SheetTitle>Navigation</SheetTitle>
             </SheetHeader>
-            <Sidebar />
+            <Sidebar role={role} />
           </SheetContent>
         </Sheet>
         <span className="text-sm font-medium text-muted-foreground">{username}</span>
