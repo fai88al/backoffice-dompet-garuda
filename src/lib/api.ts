@@ -13,6 +13,10 @@ import type {
   SyncBatch,
   FlaggedTransaction,
   Certificate,
+  Article,
+  ArticleStatus,
+  CreateArticleRequest,
+  UpdateArticleRequest,
 } from '@/types/api'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.dompetgaruda.com'
@@ -90,5 +94,20 @@ export const api = {
   certificates: {
     list: (status?: string) =>
       request<Certificate[]>(`/admin/certificates${status ? `?status=${status}` : ''}`),
+  },
+  articles: {
+    list: (status?: ArticleStatus) =>
+      request<Article[]>(`/admin/articles${status ? `?status=${status}` : ''}`),
+    get: (id: string) => request<Article>(`/admin/articles/${id}`),
+    create: (data: CreateArticleRequest) =>
+      request<Article>('/admin/articles', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: UpdateArticleRequest) =>
+      request<Article>(`/admin/articles/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    publish: (id: string) =>
+      request<Article>(`/admin/articles/${id}/publish`, { method: 'POST' }),
+    unpublish: (id: string) =>
+      request<Article>(`/admin/articles/${id}/unpublish`, { method: 'POST' }),
+    delete: (id: string) =>
+      request<void>(`/admin/articles/${id}`, { method: 'DELETE' }),
   },
 }
