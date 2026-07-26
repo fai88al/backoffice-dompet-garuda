@@ -277,6 +277,7 @@ export function ArticleForm({ article }: { article?: Article }) {
   const handleConfirmedAction = async () => {
     if (!savedArticle || !confirmAction) return
     setConfirming(true)
+    setServerError(null)
     try {
       if (confirmAction === 'publish') {
         const updated = await api.articles.publish(savedArticle.id)
@@ -293,7 +294,7 @@ export function ArticleForm({ article }: { article?: Article }) {
         router.push('/articles')
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Action failed')
+      setServerError(err instanceof Error ? err.message : 'Action failed')
     } finally {
       setConfirming(false)
       setConfirmAction(null)
