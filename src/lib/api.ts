@@ -45,7 +45,12 @@ async function request<T>(
   }
   if (!res.ok) {
     const error = await res.json().catch(() => ({}))
-    throw new Error(error.message ?? `HTTP ${res.status}`)
+    // Preserve the status so callers can distinguish failure types —
+    // e.g. device registration treats a 503 (MQTT provisioning failure,
+    // rolled back atomically on the backend) differently from a 4xx.
+    const err = new Error(error.message ?? `HTTP ${res.status}`) as Error & { status?: number }
+    err.status = res.status
+    throw err
   }
   return res.json()
 }
