@@ -88,7 +88,14 @@ export default function NewDevicePage() {
       })
       setTokenResult(result)
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Failed to register device')
+      const status = err instanceof Error ? (err as Error & { status?: number }).status : undefined
+      if (status === 503) {
+        setServerError(
+          'Pendaftaran gagal: sistem notifikasi sedang bermasalah. Silakan coba lagi dalam beberapa saat.'
+        )
+      } else {
+        setServerError(err instanceof Error ? err.message : 'Failed to register device')
+      }
     }
   }
 
@@ -201,7 +208,8 @@ export default function NewDevicePage() {
           <DialogHeader>
             <DialogTitle>Device Token</DialogTitle>
             <DialogDescription>
-              Provision this token onto the device now. It will not be shown again.
+              Provision this token onto the device now. It will not be shown again. Perangkat
+              siap menerima notifikasi otomatis.
             </DialogDescription>
           </DialogHeader>
 
