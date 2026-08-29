@@ -2,14 +2,16 @@
 
 Hand these prompts to Claude Code one at a time. Review and merge each PR before the next.
 
-**Progress:** PR1–PR7 ✅ all merged and deployed. Backoffice is live at
-`backoffice.dompetgaruda.com`, connected to the production API.
+**Progress:** PR1–PR9 ✅ all merged and deployed. Backoffice is live at
+`backoffice.dompetgaruda.com`, connected to the production API, with real per-user login
+and a fully role-split experience for `ADMIN` and `WRITER`.
 
-**Next: PR8 — real login (email + password against real backend accounts)**
+**Next: PR10 — Device registration, MQTT-aware error handling**
 
-This depends on the backend's `feat/admin-user-auth` PR being merged and verified
-(confirmed: `POST /admin/auth/login` now accepts `{ username, password }` and issues a
-JWT; old `ADMIN_API_TOKEN` returns 401).
+This depends on the backend's MQTT per-device provisioning feature (FR25/FR26) being merged
+and verified in production (confirmed: `POST /admin/devices` now provisions MQTT credentials
+atomically with device registration; a `503` is returned if that provisioning fails, and the
+whole registration is rolled back — see backend CLAUDE.md §15).
 
 ---
 
@@ -17,135 +19,68 @@ JWT; old `ADMIN_API_TOKEN` returns 401).
 
 1. ✅ **PR1 — Scaffold.** Next.js 16, Bun, shadcn/ui, Tailwind, color palette, folder
    structure, `lib/api.ts` and `lib/auth.ts` skeletons, TypeScript types.
-2. ✅ **PR2 — Layout + Login.** Root layout, auth layout, login page (password-only —
-   now superseded by PR8), dashboard layout with sidebar/topbar, theme toggle.
+2. ✅ **PR2 — Layout + Login.** Root layout, auth layout, login page (password-only,
+   later superseded by PR8), dashboard layout with sidebar/topbar, theme toggle.
 3. ✅ **PR3 — Dashboard overview.** Stats cards, recent flagged transactions, recent sync
    batches, shared components (status-badge, page-header, empty-state, data-table).
 4. ✅ **PR4 — Users page.** List, create, detail + top-up.
 5. ✅ **PR5 — Devices page.** List, register (with one-time token modal), detail +
-   status update.
+   status update. *This page is what PR10 below enhances.*
 6. ✅ **PR6 — Sync Batches + Flagged pages.** Both list views, flagged resolve action.
 7. ✅ **PR7 — Deployment.** Dockerfile, GitHub Actions CI/CD, deployed to
    `backoffice.dompetgaruda.com` via Caddy.
+8. ✅ **PR8 — Real login (email + password).** Replaced the password-only login with a
+   real email + password form against the backend's per-user accounts (`admin_users`
+   table). `lib/auth.ts` stores role and username alongside the token.
+9. ✅ **PR9 — Writer role dashboard.** Role-split sidebar (`ADMIN` vs `WRITER`), Tiptap
+   rich-text editor, full article CRUD (create as DRAFT, edit, preview, publish/unpublish),
+   `WRITER` redirected away from admin-only routes.
 
 ---
 
 ## Current phase
 
-8. **PR8 — Real login (email + password).** Replaces the password-only login with a
-   real email + password form against the backend's new per-user accounts. Updates
-   `lib/auth.ts` to store role and username alongside the token. *This PR is next.*
+10. **PR10 — Device registration, MQTT-aware error handling.** The device registration
+    form (built in PR5) predates the backend's MQTT provisioning feature. Registration can
+    now fail with a `503` if MQTT provisioning fails on the backend (an atomic, all-or-
+    nothing operation) — a failure mode the current generic error handling doesn't
+    distinguish from a validation error. *This PR is next.*
 
-## Not yet scoped (confirm with Faisal before starting)
+## Not yet scoped (confirm before starting)
 
-9. **Writer role dashboard.** A separate view (or role-gated section) for the `WRITER`
-   role once article management exists on the backend. Not yet built — do not start
-   without explicit scope confirmation.
-10. **Article management UI.** Depends on backend article CRUD endpoints (not yet built).
 11. **Password change page.** Depends on the backend's password-change endpoint (not yet
-    built) — needed so the seeded temporary passwords can be rotated from the UI instead
-    of a DB migration.
+    built) — needed so seeded temporary passwords can be rotated from the UI instead of a
+    DB migration.
+12. **Article scheduling / categories.** Not requested yet — confirm with Faisal first.
 
 ---
 
-## Next prompt to paste — PR8 (real login)
+## After PR10 merges and deploys — verification checklist
 
-```
-Read CLAUDE.md fully — the auth section has changed to
-email + password against real backend accounts.
-Work on branch feat/real-login, open a PR against main.
-
-This depends on the backend PR feat/admin-user-auth being
-merged and deployed (confirmed: POST /admin/auth/login now
-accepts { username, password } and returns a JWT + role +
-username; the old static token returns 401).
-
-1. Update lib/auth.ts to the version in CLAUDE.md §5
-   (stores token, role, username — not just a token):
-
-   const TOKEN_KEY = 'dompet_admin_token'
-   const ROLE_KEY = 'dompet_admin_role'
-   const USERNAME_KEY = 'dompet_admin_username'
-
-   export const getToken = () => localStorage.getItem(TOKEN_KEY)
-   export const getRole = () => localStorage.getItem(ROLE_KEY)
-   export const getUsername = () => localStorage.getItem(USERNAME_KEY)
-
-   export const setAuth = (token: string, role: string, username: string) => {
-     localStorage.setItem(TOKEN_KEY, token)
-     localStorage.setItem(ROLE_KEY, role)
-     localStorage.setItem(USERNAME_KEY, username)
-   }
-
-   export const clearAuth = () => {
-     localStorage.removeItem(TOKEN_KEY)
-     localStorage.removeItem(ROLE_KEY)
-     localStorage.removeItem(USERNAME_KEY)
-   }
-
-   export const isAuthenticated = () => !!getToken()
-
-   Remove old setToken/clearToken and update every caller.
-
-2. Update lib/api.ts:
-   - auth.login signature becomes (username: string, password: string):
-     login: (username: string, password: string) =>
-       request<{ token: string; type: string; username: string; role: string }>(
-         '/admin/auth/login',
-         { method: 'POST', body: JSON.stringify({ username, password }) }
-       ),
-   - In the request() function's 401 handler, call clearAuth()
-     instead of clearToken().
-
-3. Update the login page (app/(auth)/login/page.tsx):
-   - Add an Email field ABOVE Password (both required).
-     Use type="email", label "Email".
-   - zod schema: email (valid email format), password
-     (required, min 8 chars)
-   - On submit: api.auth.login(email, password)
-   - On success: setAuth(token, role, username),
-     redirect to /dashboard
-   - On error: generic Alert "Invalid email or password"
-     (never reveal which field was wrong — CLAUDE.md §12)
-   - Keep existing loading state and dark mode support
-
-4. Update the sidebar/topbar (components/layout/sidebar.tsx
-   and/or topbar) to show getUsername() instead of the
-   hardcoded "Admin" label.
-
-5. Update every call site that used clearToken() for logout
-   to use clearAuth() instead.
-
-Open PR with screenshots of the updated login form (light +
-dark mode) and confirmation that login works end-to-end
-against the live API with both seeded accounts
-(rizki@dompetgaruda.com, faisal@dompetgaruda.com).
-```
-
----
-
-## After PR8 merges and deploys — verification checklist
+Since a real `503` is hard to trigger on demand (it only happens if the broker is actually
+unreachable), verify this two ways:
 
 ```bash
-# 1. Open the live login page
-open https://backoffice.dompetgaruda.com/login
+# 1. Confirm the happy path still works exactly as before
+#    (this is the regression check - most important to not break)
+open https://backoffice.dompetgaruda.com/devices/new
+# Register a real test device, confirm the one-time token modal still
+# shows the token exactly once with the copy button.
 
-# 2. Log in with each seeded account and confirm:
-#    - Email + password fields both present
-#    - Wrong password shows "Invalid email or password" (generic, not specific)
-#    - Correct credentials redirect to /dashboard
-#    - Sidebar/topbar shows the logged-in email, not "Admin"
-#    - Dark mode toggle still works on the login page
-
-# 3. Confirm logout clears everything:
-#    - Click logout
-#    - Should redirect to /login
-#    - Refreshing /dashboard directly should redirect back to /login
-#      (localStorage cleared)
+# 2. Simulate the 503 path, if feasible:
+#    Temporarily stop the Mosquitto container on the VPS, attempt a
+#    registration from the UI, confirm the distinct message appears,
+#    then restart Mosquitto and confirm registration succeeds normally.
+docker compose -f docker-compose.prod.yml stop mosquitto
+# ... attempt registration in the UI, confirm the message ...
+docker compose -f docker-compose.prod.yml start mosquitto
 ```
 
-Only after this checklist passes should any writer-role or article-management work begin —
-those depend on backend endpoints that don't exist yet (see "Not yet scoped" above).
+**Do not run the Mosquitto-stop test against production without a maintenance window** —
+stopping Mosquitto affects the worker's ability to publish real notifications for any
+in-flight offline sync settlements during that window. Prefer running this specific check
+during low-traffic hours, or skip it if the code change is small enough to verify by
+reading the diff carefully instead.
 
 ---
 
