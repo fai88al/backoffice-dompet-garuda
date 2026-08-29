@@ -6,7 +6,7 @@ export default function AuthLayout({
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center gap-8 bg-surface px-4">
       <span className="text-2xl font-semibold tracking-tight text-primary">
-        Dompet Digital
+        Dompet Garuda
       </span>
       {children}
     </div>

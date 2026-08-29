@@ -50,7 +50,7 @@ export function Sidebar({
   return (
     <nav className="flex h-full w-full flex-col gap-1 p-4">
       <span className="mb-4 px-2 text-lg font-semibold tracking-tight text-primary">
-        Dompet Digital
+        Dompet Garuda
       </span>
       {navItems.map(({ href, label, icon: Icon }) => {
         const isActive = matchLength(href) >= 0 && matchLength(href) === bestMatchLength

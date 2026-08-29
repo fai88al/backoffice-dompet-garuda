@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dompet Digital Backoffice",
-  description: "Admin backoffice for Dompet Digital",
+  title: "Dompet Garuda Backoffice",
+  description: "Admin backoffice for Dompet Garuda",
 };
 
 export default function RootLayout({

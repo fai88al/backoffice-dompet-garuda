@@ -1,6 +1,6 @@
 # backoffice-dompet-garuda
 
-Admin backoffice frontend for Dompet Digital. See `CLAUDE.md` for the tech
+Admin backoffice frontend for Dompet Garuda. See `CLAUDE.md` for the tech
 stack, project structure, and development conventions.
 
 ## Deployment

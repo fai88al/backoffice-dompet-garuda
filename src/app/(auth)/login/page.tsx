@@ -48,7 +48,7 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Dompet Digital Backoffice</CardTitle>
+        <CardTitle>Dompet Garuda Backoffice</CardTitle>
         <CardDescription>Sign in with your admin account to continue.</CardDescription>
       </CardHeader>
       <CardContent>

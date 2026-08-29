@@ -1,14 +1,14 @@
-# CLAUDE.md — Dompet Digital Backoffice
+# CLAUDE.md — Dompet Garuda Backoffice
 
 > Context file for Claude Code. Read this fully before generating or editing any code.
-> This is the **frontend** for the Dompet Digital admin backoffice.
+> This is the **frontend** for the Dompet Garuda admin backoffice.
 > It is a separate codebase from the Spring Boot backend.
 
 ---
 
 ## 1. What this project is
 
-A web-based backoffice panel for Dompet Digital administrators and writers. It connects to
+A web-based backoffice panel for Dompet Garuda administrators and writers. It connects to
 the existing REST API at `https://api.dompetgaruda.com` and provides a UI for managing
 users, devices, sync batches, flagged transactions, and — for the `WRITER` role — articles.
 

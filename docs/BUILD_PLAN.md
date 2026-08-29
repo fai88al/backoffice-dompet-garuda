@@ -1,4 +1,4 @@
-# BUILD_PLAN — Dompet Digital Backoffice Frontend
+# BUILD_PLAN — Dompet Garuda Backoffice Frontend
 
 Hand these prompts to Claude Code one at a time. Review and merge each PR before the next.
 
