@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Copy, Loader2, TriangleAlert } from 'lucide-react'
+import { CheckCircle2, Copy, Loader2, TriangleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -31,9 +31,15 @@ import {
 } from '@/components/ui/dialog'
 import { PageHeader } from '@/components/shared/page-header'
 import { api } from '@/lib/api'
+import { checkPublicKeyFormat, type PublicKeyFormatCheck } from '@/lib/validation'
 import type { User, RegisterDeviceResponse } from '@/types/api'
 
 const registerSchema = z.object({
+  deviceId: z
+    .string()
+    .min(1, 'Device ID is required')
+    .max(128, 'Max 128 characters')
+    .regex(/^[^/|]+$/, 'Device ID must not contain / or |'),
   userId: z.string().min(1, 'Select a user'),
   publicKey: z.string().min(1, 'Public key is required'),
   label: z.string().max(60, 'Max 60 characters').optional(),
@@ -48,6 +54,7 @@ export default function NewDevicePage() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [tokenResult, setTokenResult] = useState<RegisterDeviceResponse | null>(null)
   const [copied, setCopied] = useState(false)
+  const [publicKeyFormat, setPublicKeyFormat] = useState<PublicKeyFormatCheck>('empty')
 
   useEffect(() => {
     let cancelled = false
@@ -72,16 +79,28 @@ export default function NewDevicePage() {
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { label: '' },
   })
 
+  const publicKeyValue = watch('publicKey')
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setPublicKeyFormat(checkPublicKeyFormat(publicKeyValue ?? ''))
+    }, 300)
+
+    return () => clearTimeout(timeout)
+  }, [publicKeyValue])
+
   const onSubmit = async (values: RegisterFormValues) => {
     setServerError(null)
     try {
       const result = await api.devices.register({
+        deviceId: values.deviceId,
         userId: values.userId,
         publicKey: values.publicKey,
         label: values.label || undefined,
@@ -125,6 +144,17 @@ export default function NewDevicePage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
+              <Label htmlFor="deviceId">Device ID</Label>
+              <p className="text-xs text-muted-foreground">
+                Provided by the hardware team — not a UUID, must not contain / or |
+              </p>
+              <Input id="deviceId" placeholder="e.g. GRD-4F21A9" {...register('deviceId')} />
+              {errors.deviceId && (
+                <p className="text-sm text-destructive">{errors.deviceId.message}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
               <Label htmlFor="userId">User</Label>
               <Controller
                 control={control}
@@ -160,6 +190,17 @@ export default function NewDevicePage() {
               />
               {errors.publicKey && (
                 <p className="text-sm text-destructive">{errors.publicKey.message}</p>
+              )}
+              {!errors.publicKey && publicKeyFormat === 'invalid' && (
+                <p className="text-sm text-destructive">
+                  Doesn&apos;t look like a valid Ed25519 public key (expected 32 bytes).
+                </p>
+              )}
+              {!errors.publicKey && publicKeyFormat === 'valid' && (
+                <p className="flex items-center gap-1 text-sm text-success">
+                  <CheckCircle2 className="size-4" />
+                  Valid key format
+                </p>
               )}
             </div>
 

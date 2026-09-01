@@ -47,6 +47,7 @@ export interface Device {
 export type DeviceDetail = Device
 
 export interface RegisterDeviceRequest {
+  deviceId: string
   userId: string
   publicKey: string
   label?: string
