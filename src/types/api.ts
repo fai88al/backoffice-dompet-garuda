@@ -143,3 +143,35 @@ export interface UpdateArticleRequest {
   contentHtml?: string
   coverImageUrl?: string
 }
+
+export type TransactionType =
+  | 'ONLINE_TRANSFER'
+  | 'OFFLINE_TRANSFER'
+  | 'QR_PAYMENT_ONLINE'
+  | 'TOPUP'
+  | 'POUCH_LOAD'
+  | 'POUCH_REFUND'
+
+export type TransactionDirection = 'DEBIT' | 'CREDIT'
+
+export type TransactionStatus = 'SUCCESS' | 'PENDING' | 'FAILED' | 'REVERSED'
+
+export interface TransactionHistoryItem {
+  transactionId: number | null
+  referenceId: string
+  type: TransactionType
+  direction: TransactionDirection
+  amount: number
+  counterparty: string
+  status: TransactionStatus
+  notes: string
+  createdAt: string
+}
+
+export interface TransactionHistoryPage {
+  content: TransactionHistoryItem[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
