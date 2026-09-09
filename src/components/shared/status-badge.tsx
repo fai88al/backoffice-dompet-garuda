@@ -7,6 +7,7 @@ const statusStyles: Record<string, string> = {
   SETTLED: 'border-success/30 bg-success/15 text-success',
   DONE: 'border-success/30 bg-success/15 text-success',
   PUBLISHED: 'border-success/30 bg-success/15 text-success',
+  SUCCESS: 'border-success/30 bg-success/15 text-success',
   SUSPENDED: 'border-destructive/30 bg-destructive/15 text-destructive',
   FLAGGED: 'border-destructive/30 bg-destructive/15 text-destructive',
   FAILED: 'border-destructive/30 bg-destructive/15 text-destructive',
@@ -14,9 +15,10 @@ const statusStyles: Record<string, string> = {
   PENDING: 'border-warning/30 bg-warning/15 text-warning',
   PROCESSING: 'border-warning/30 bg-warning/15 text-warning',
   EXPIRED: 'border-border bg-muted text-muted-foreground',
-  // Explicitly mapped (not left to the unmapped default) so DRAFT and EXPIRED
-  // are documented as the same muted/gray treatment on purpose.
+  // Explicitly mapped (not left to the unmapped default) so DRAFT, EXPIRED, and
+  // REVERSED are documented as the same muted/gray treatment on purpose.
   DRAFT: 'border-border bg-muted text-muted-foreground',
+  REVERSED: 'border-border bg-muted text-muted-foreground',
 }
 
 function formatLabel(status: string) {

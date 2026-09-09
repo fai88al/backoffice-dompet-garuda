@@ -18,6 +18,7 @@ import type {
   CreateArticleRequest,
   UpdateArticleRequest,
   TransactionHistoryPage,
+  AnalyticsOverview,
 } from '@/types/api'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.dompetgaruda.com'
@@ -112,6 +113,10 @@ export const api = {
       request<FlaggedTransaction>(`/admin/flagged/${flagId}/resolve`, {
         method: 'PATCH',
       }),
+  },
+  analytics: {
+    overview: (from: string, to: string) =>
+      request<AnalyticsOverview>(`/admin/analytics/overview?from=${from}&to=${to}`),
   },
   certificates: {
     list: (status?: string) =>

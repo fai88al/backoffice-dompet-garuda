@@ -175,3 +175,29 @@ export interface TransactionHistoryPage {
   totalElements: number
   totalPages: number
 }
+
+export interface DailyVolumeEntry {
+  date: string
+  type: TransactionType
+  count: number
+  totalAmount: number
+}
+
+export interface TypeDistributionEntry {
+  type: TransactionType
+  count: number
+}
+
+export interface ActiveUsersSummary {
+  daily: number
+  sevenDay: number
+  thirtyDay: number
+}
+
+export interface AnalyticsOverview {
+  dailyVolume: DailyVolumeEntry[]
+  typeDistribution: TypeDistributionEntry[]
+  statusCounts: Partial<Record<TransactionStatus, number>>
+  activeUsers: ActiveUsersSummary
+  deviceStatus: Partial<Record<DeviceStatus, number>>
+}
