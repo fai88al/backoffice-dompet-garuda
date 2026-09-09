@@ -375,36 +375,55 @@ success.
 
 ---
 
-## 9a. Device registration — MQTT-aware behavior (NEW, backend context)
+## 9a. Device registration — required fields and validation (updated: PR12, PR13)
 
-As of the backend's MQTT per-device provisioning feature, `POST /admin/devices` now does
-**more** than create a database row: it also provisions MQTT credentials for the device as
-a **mandatory** part of registration (backend `MqttAdminClient`, backend PRD FR25). If MQTT
-provisioning fails on the backend, the **entire registration is rolled back** and the API
-returns **`503 Service Unavailable`** instead of `201 Created` — a failure mode that did not
-exist when the device registration page was first built.
+`POST /admin/devices` requires **two fields whose exact format is easy to get wrong** —
+both have already caused real bugs in this codebase once. Read this fully before
+touching the registration form again.
 
-**What this means for the frontend:**
+### `deviceId` — required, string, NOT a UUID (added PR12)
 
-1. **Distinguish a `503` from other failures in the register-device form.** Using the
-   `err.status` now preserved by `request()` (§6), a `503` on `POST /admin/devices` should
-   show a specific message — e.g. "Pendaftaran gagal: sistem notifikasi sedang bermasalah,
-   coba lagi dalam beberapa saat." — rather than a generic error. This is not the user's
-   fault (bad input) and retrying later is often the correct action, so the message should
-   reflect that rather than reading like a validation error.
-2. **On success, the one-time token modal may note that MQTT notification is also ready.**
-   A short line such as "Perangkat siap menerima notifikasi otomatis" is optional polish —
-   not required, but accurately reflects that registration succeeding means MQTT provisioning
-   also succeeded (they're now atomic on the backend).
-3. **No new fields are needed in the registration form.** The frontend does not send or
-   receive anything MQTT-specific — this is entirely a backend-side side effect. Do not add
-   an "MQTT username" or "MQTT password" field anywhere; the device token already shown in
-   the one-time-secret modal **is** the MQTT password (backend reuses it, mints no new
-   secret) — this is backend detail, not something the UI needs to expose or explain further.
+The backend made `deviceId` a required, client-supplied field (previously
+server-generated). It is a plain string sourced from the hardware team's own
+identifier scheme — **not** a UUID, and must not contain `/` or `|` (these break MQTT
+topic structure and the offline signature message format on the backend side; see
+backend `CLAUDE.md` §1a if available). Client-side zod validation: required, max 128
+characters, reject `/` and `|`.
 
-**The one-time token modal itself (already built in PR5) remains the most safety-critical
-piece of this page** — the device token is shown exactly once; the backend stores only its
-hash. If this modal is ever changed, preserve: a persistent copy-to-clipboard button, a
+### `publicKey` — required, Base64(X.509 SubjectPublicKeyInfo DER), fixed 44 bytes
+
+> [!warning] Do not use 32 bytes — this exact mistake already shipped once (PR12→PR13)
+> An Ed25519 public key in this system is **not** the raw 32-byte key. It's the full
+> X.509 `SubjectPublicKeyInfo` DER encoding: a **fixed 12-byte ASN.1 header**
+> (`302a300506032b6570032100` in hex, `MCowBQYDK2VwAyEA` in Base64) followed by the
+> 32-byte raw key — **44 bytes total, always**, since Ed25519 keys never vary in
+> size. This matches exactly what the backend's `Ed25519PublicKeyValidator` and
+> `Ed25519Verifier` actually parse (`KeyFactory.generatePublic` with
+> `X509EncodedKeySpec`) — do not re-derive this from first principles, use the
+> numbers in this note directly.
+
+Real-time client-side check (advisory only, does not block submission — backend
+validation is the actual enforcement): decode Base64, confirm the decoded length is
+exactly 44 bytes, confirm it starts with the fixed header. A quick way to check
+without a full byte-level decode: the Base64 string itself should start with the
+literal 16 characters `MCowBQYDK2VwAyEA` — that prefix is byte-aligned and identical
+for every valid key in this system.
+
+### MQTT provisioning — `503` handling (PR10, still accurate)
+
+`POST /admin/devices` also provisions MQTT credentials as a **mandatory** part of
+registration (backend `MqttAdminClient`, FR25). If that fails, registration is rolled
+back and returns `503` instead of `201`. Distinguish this from other failures using
+`err.status` (§6) — show a specific "system busy, try again" message, not a generic
+validation error; this isn't the admin's fault and retrying later is the correct action.
+
+The frontend does not send or receive anything MQTT-specific beyond the device token
+already shown once in the registration-success modal (which **is** the MQTT
+password, reused — no separate secret to display).
+
+**The one-time token modal (PR5) remains the most safety-critical piece of this
+page** — the device token is shown exactly once; the backend stores only its hash.
+If this modal is ever changed, preserve: a persistent copy-to-clipboard button, a
 visible "you will not see this again" warning, and no auto-dismiss.
 
 ---
