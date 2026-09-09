@@ -17,6 +17,7 @@ import type {
   ArticleStatus,
   CreateArticleRequest,
   UpdateArticleRequest,
+  TransactionHistoryPage,
 } from '@/types/api'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.dompetgaruda.com'
@@ -72,6 +73,22 @@ export const api = {
       request<TopUpResponse>(`/admin/users/${userId}/topup`, {
         method: 'POST', body: JSON.stringify(data),
       }),
+  },
+  transactions: {
+    listForUser: (
+      userId: string,
+      params?: { type?: string; from?: string; to?: string; page?: number; size?: number }
+    ) => {
+      const query = new URLSearchParams()
+      if (params?.type) query.set('type', params.type)
+      if (params?.from) query.set('from', params.from)
+      if (params?.to) query.set('to', params.to)
+      query.set('page', String(params?.page ?? 0))
+      query.set('size', String(params?.size ?? 20))
+      return request<TransactionHistoryPage>(
+        `/admin/users/${userId}/transactions?${query.toString()}`
+      )
+    },
   },
   devices: {
     list: () => request<Device[]>('/admin/devices'),
