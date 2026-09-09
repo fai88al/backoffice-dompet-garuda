@@ -1,19 +1,72 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Users, Smartphone, ShieldCheck, AlertTriangle, type LucideIcon } from 'lucide-react'
+import {
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { DataTable } from '@/components/shared/data-table'
 import { api } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
-import type { FlaggedTransaction, SyncBatch } from '@/types/api'
+import type { AnalyticsOverview, FlaggedTransaction, SyncBatch } from '@/types/api'
+
+type DateRangePreset = '7d' | '30d' | 'custom'
+
+// Fixed palette, one color per transaction type series — recharts needs a stable
+// key->color mapping so lines/slices don't reshuffle color as data changes.
+const TYPE_COLORS: Record<string, string> = {
+  ONLINE_TRANSFER: '#5d7066',
+  OFFLINE_TRANSFER: '#d9c6b0',
+  QR_PAYMENT_ONLINE: '#7a9e8a',
+  TOPUP: '#3b82f6',
+  POUCH_LOAD: '#a855f7',
+  POUCH_REFUND: '#d97706',
+}
+const FALLBACK_TYPE_COLOR = '#9ca3af'
+
+function colorForType(type: string) {
+  return TYPE_COLORS[type] ?? FALLBACK_TYPE_COLOR
+}
+
+// Mirrors StatusBadge's color mapping (§9) so the analytics section stays
+// visually consistent with status badges used elsewhere on this page.
+const STATUS_COLORS: Record<string, string> = {
+  SUCCESS: 'var(--success)',
+  PENDING: 'var(--warning)',
+  FAILED: 'var(--destructive)',
+  REVERSED: 'var(--muted-foreground)',
+}
+
+function toIsoInstant(date: Date) {
+  return date.toISOString()
+}
 
 interface DashboardData {
   userCount: number
@@ -34,6 +87,23 @@ const stats: { key: keyof Pick<DashboardData, 'userCount' | 'deviceCount' | 'act
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const [preset, setPreset] = useState<DateRangePreset>('7d')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
+  const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null)
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null)
+
+  const range = useMemo(() => {
+    if (preset === 'custom') {
+      if (!customFrom || !customTo) return null
+      return { from: new Date(customFrom).toISOString(), to: new Date(customTo).toISOString() }
+    }
+    const to = new Date()
+    const from = new Date(to)
+    from.setDate(from.getDate() - (preset === '30d' ? 30 : 7))
+    return { from: toIsoInstant(from), to: toIsoInstant(to) }
+  }, [preset, customFrom, customTo])
 
   useEffect(() => {
     let cancelled = false
@@ -74,6 +144,47 @@ export default function DashboardPage() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (!range) return
+    let cancelled = false
+
+    api.analytics
+      .overview(range.from, range.to)
+      .then((result) => {
+        if (!cancelled) {
+          setAnalytics(result)
+          setAnalyticsError(null)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setAnalyticsError(err instanceof Error ? err.message : 'Failed to load analytics')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [range])
+
+  const dailyVolumeChartData = useMemo(() => {
+    if (!analytics) return []
+    const byDate = new Map<string, Record<string, number | string>>()
+    for (const entry of analytics.dailyVolume) {
+      const row = byDate.get(entry.date) ?? { date: entry.date }
+      row[entry.type] = entry.count
+      byDate.set(entry.date, row)
+    }
+    return [...byDate.values()].sort((a, b) =>
+      String(a.date).localeCompare(String(b.date))
+    )
+  }, [analytics])
+
+  const dailyVolumeTypes = useMemo(
+    () => [...new Set(analytics?.dailyVolume.map((e) => e.type) ?? [])],
+    [analytics]
+  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -160,6 +271,220 @@ export default function DashboardPage() {
           />
         </CardContent>
       </Card>
+
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Analytics Overview</h2>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="analytics-range" className="text-xs text-muted-foreground">
+                Range
+              </Label>
+              <Select value={preset} onValueChange={(v) => setPreset(v as DateRangePreset)}>
+                <SelectTrigger id="analytics-range" className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {preset === 'custom' && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="analytics-from" className="text-xs text-muted-foreground">
+                    From
+                  </Label>
+                  <Input
+                    id="analytics-from"
+                    type="date"
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="analytics-to" className="text-xs text-muted-foreground">
+                    To
+                  </Label>
+                  <Input
+                    id="analytics-to"
+                    type="date"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {analyticsError && (
+          <Alert variant="destructive">
+            <AlertDescription>{analyticsError}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Daily Volume</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!analytics && !analyticsError ? (
+                <Skeleton className="h-64 w-full" />
+              ) : dailyVolumeChartData.length === 0 ? (
+                <p className="py-16 text-center text-sm text-muted-foreground">No data for this range</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={dailyVolumeChartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                    <Tooltip />
+                    <Legend />
+                    {dailyVolumeTypes.map((type) => (
+                      <Line
+                        key={type}
+                        type="monotone"
+                        dataKey={type}
+                        stroke={colorForType(type)}
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Type Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!analytics && !analyticsError ? (
+                <Skeleton className="h-64 w-full" />
+              ) : (analytics?.typeDistribution.length ?? 0) === 0 ? (
+                <p className="py-16 text-center text-sm text-muted-foreground">No data for this range</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={analytics?.typeDistribution}
+                      dataKey="count"
+                      nameKey="type"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                      label
+                    >
+                      {analytics?.typeDistribution.map((entry) => (
+                        <Cell key={entry.type} fill={colorForType(entry.type)} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Status Counts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!analytics && !analyticsError ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <div className="flex flex-col gap-3">
+                {(['SUCCESS', 'PENDING', 'FAILED', 'REVERSED'] as const).map((status) => {
+                  const count = analytics?.statusCounts[status] ?? 0
+                  const max = Math.max(
+                    1,
+                    ...(['SUCCESS', 'PENDING', 'FAILED', 'REVERSED'] as const).map(
+                      (s) => analytics?.statusCounts[s] ?? 0
+                    )
+                  )
+                  return (
+                    <div key={status} className="flex items-center gap-3">
+                      <div className="w-28 shrink-0">
+                        <StatusBadge status={status} />
+                      </div>
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${(count / max) * 100}%`,
+                            backgroundColor: STATUS_COLORS[status],
+                          }}
+                        />
+                      </div>
+                      <span className="w-10 shrink-0 text-right text-sm font-medium">{count}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div>
+          <p className="mb-2 text-xs text-muted-foreground">Active users — as of now, not scoped to the selected range</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {(
+              [
+                { key: 'daily', label: 'Daily Active' },
+                { key: 'sevenDay', label: '7-Day Active' },
+                { key: 'thirtyDay', label: '30-Day Active' },
+              ] as const
+            ).map(({ key, label }) => (
+              <Card key={key}>
+                <CardContent className="pt-6">
+                  {analytics ? (
+                    <p className="text-2xl font-semibold leading-none">
+                      {analytics.activeUsers[key]}
+                    </p>
+                  ) : (
+                    <Skeleton className="h-7 w-10" />
+                  )}
+                  <p className="mt-1 text-sm text-muted-foreground">{label}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-xs text-muted-foreground">Device status — as of now, not scoped to the selected range</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {(['ACTIVE', 'SUSPENDED', 'LOCKED'] as const).map((status) => (
+              <Card key={status}>
+                <CardContent className="flex items-center gap-4 pt-6">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <Smartphone className="size-5" />
+                  </div>
+                  <div>
+                    {analytics ? (
+                      <p className="text-2xl font-semibold leading-none">
+                        {analytics.deviceStatus[status] ?? 0}
+                      </p>
+                    ) : (
+                      <Skeleton className="h-7 w-10" />
+                    )}
+                    <p className="mt-1 text-sm text-muted-foreground">{status}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
