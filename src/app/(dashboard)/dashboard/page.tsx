@@ -32,10 +32,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
+import { TRANSACTION_STATUS_LABELS, TRANSACTION_TYPE_LABELS, labelFor } from '@/lib/labels'
 import { DataTable } from '@/components/shared/data-table'
 import { api } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import type { AnalyticsOverview, FlaggedTransaction, SyncBatch } from '@/types/api'
+
+const DEVICE_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: 'Active Devices',
+  SUSPENDED: 'Suspended Devices',
+  LOCKED: 'Locked Devices',
+}
 
 type DateRangePreset = '7d' | '30d' | 'custom'
 
@@ -349,6 +356,7 @@ export default function DashboardPage() {
                         key={type}
                         type="monotone"
                         dataKey={type}
+                        name={labelFor(TRANSACTION_TYPE_LABELS, type)}
                         stroke={colorForType(type)}
                         strokeWidth={2}
                         dot={false}
@@ -373,9 +381,12 @@ export default function DashboardPage() {
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
                     <Pie
-                      data={analytics?.typeDistribution}
+                      data={analytics?.typeDistribution.map((e) => ({
+                        ...e,
+                        name: labelFor(TRANSACTION_TYPE_LABELS, e.type),
+                      }))}
                       dataKey="count"
-                      nameKey="type"
+                      nameKey="name"
                       cx="50%"
                       cy="50%"
                       outerRadius={90}
@@ -414,7 +425,10 @@ export default function DashboardPage() {
                   return (
                     <div key={status} className="flex items-center gap-3">
                       <div className="w-28 shrink-0">
-                        <StatusBadge status={status} />
+                        <StatusBadge
+                          status={status}
+                          label={TRANSACTION_STATUS_LABELS[status]}
+                        />
                       </div>
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                         <div
@@ -477,7 +491,7 @@ export default function DashboardPage() {
                     ) : (
                       <Skeleton className="h-7 w-10" />
                     )}
-                    <p className="mt-1 text-sm text-muted-foreground">{status}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{labelFor(DEVICE_STATUS_LABELS, status)}</p>
                   </div>
                 </CardContent>
               </Card>

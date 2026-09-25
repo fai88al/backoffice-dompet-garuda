@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { GENERAL_STATUS_LABELS } from '@/lib/labels'
 
 // Reusable badge for ACTIVE/SUSPENDED/FLAGGED/SETTLED etc. — color mapping per CLAUDE.md §9.
 const statusStyles: Record<string, string> = {
@@ -29,11 +30,11 @@ function formatLabel(status: string) {
     .join(' ')
 }
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status, label }: { status: string; label?: string }) {
   const style = statusStyles[status] ?? 'border-border bg-muted text-muted-foreground'
   return (
     <Badge variant="outline" className={cn('font-normal whitespace-nowrap', style)}>
-      {formatLabel(status)}
+      {label ?? GENERAL_STATUS_LABELS[status] ?? formatLabel(status)}
     </Badge>
   )
 }

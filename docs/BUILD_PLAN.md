@@ -48,6 +48,13 @@ PR #38 in `dompet-garuda`) being merged and verified in production. Confirmed li
     type + date-range filters, status badges (`SUCCESS`/`PENDING`/`FAILED`/
     `REVERSED`). *This PR is next.*
 
+    **Follow-up (UX wording):** transaction type, direction and status are mapped to
+    admin-friendly labels via `src/lib/labels.ts` (e.g. `POUCH_LOAD` → "Move to Offline
+    Pouch", `DEBIT` → "Money Out", `REVERSED` → "Refunded"); amounts show a +/- sign.
+    Also applied to dashboard charts/status cards, flagged reasons (`FLAG_REASON_LABELS`,
+    resolved/unresolved) and sync/device badges (`GENERAL_STATUS_LABELS` inside `StatusBadge`).
+    Not mapped: free-text `detail`, `errorReason`, `counterparty`, `notes` from the backend.
+
 ## Not yet scoped (confirm before starting)
 
 15. **Password change page.** Backend endpoint (`PATCH /admin/auth/password`)
