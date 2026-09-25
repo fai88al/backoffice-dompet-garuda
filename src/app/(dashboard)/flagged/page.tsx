@@ -95,13 +95,13 @@ export default function FlaggedPage() {
             type="button"
             onClick={() => setFilter(mode)}
             className={cn(
-              'rounded-sm px-3 py-1.5 text-sm font-medium capitalize transition-colors',
+              'rounded-sm px-3 py-1.5 text-sm font-medium transition-colors',
               filter === mode
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            {mode}
+            {mode === 'all' ? 'All flags' : 'Unresolved'}
           </button>
         ))}
       </div>
@@ -137,7 +137,10 @@ export default function FlaggedPage() {
               },
               {
                 header: 'Resolved',
-                cell: (row) => <StatusBadge status={row.resolved ? 'SETTLED' : 'PENDING'} />,
+                cell: (row) => <StatusBadge
+                    status={row.resolved ? 'SETTLED' : 'PENDING'}
+                    label={row.resolved ? 'Resolved' : 'Unresolved'}
+                  />,
               },
               {
                 header: 'Batch ID',

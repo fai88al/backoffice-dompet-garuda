@@ -355,6 +355,14 @@ The topbar shows the logged-in user's **email** (`getUsername()`) plus a logout 
 - `LOCKED` / `PENDING` / `PROCESSING` / `DRAFT` → amber
 - `EXPIRED` → gray
 
+### Display labels for backend enums
+Never render a raw backend enum (`OFFLINE_TRANSFER`, `DEBIT`, `POUCH_LOAD`) in the UI.
+Map it through `lib/labels.ts` (`TRANSACTION_TYPE_LABELS`, `TRANSACTION_DIRECTION_LABELS`,
+`TRANSACTION_STATUS_LABELS`, `FLAG_REASON_LABELS`, `GENERAL_STATUS_LABELS`) using `labelFor()`, which falls back to the raw value for
+unknown enums. Statuses: pass the friendly text to `<StatusBadge label=... />`; color still
+keys off the raw status. Because the maps are `Record<EnumType, string>`, `tsc` fails when
+a new backend enum value is added to `types/api.ts` without a label.
+
 ### Confirmations
 Destructive actions (suspend device, resolve flag, unpublish article, delete article) must
 show a confirmation dialog before calling the API — `<ConfirmDialog />`.

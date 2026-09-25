@@ -28,16 +28,15 @@ import { DataTable } from '@/components/shared/data-table'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import {
+  TRANSACTION_DIRECTION_LABELS,
+  TRANSACTION_STATUS_LABELS,
+  TRANSACTION_TYPE_LABELS,
+  labelFor,
+} from '@/lib/labels'
 import type { UserDetail, TransactionHistoryItem, TransactionType } from '@/types/api'
 
-const TRANSACTION_TYPES: TransactionType[] = [
-  'ONLINE_TRANSFER',
-  'OFFLINE_TRANSFER',
-  'QR_PAYMENT_ONLINE',
-  'TOPUP',
-  'POUCH_LOAD',
-  'POUCH_REFUND',
-]
+const TRANSACTION_TYPES = Object.keys(TRANSACTION_TYPE_LABELS) as TransactionType[]
 
 const topUpSchema = z.object({
   amount: z.coerce
@@ -279,7 +278,7 @@ export default function UserDetailPage() {
                   <SelectItem value="ALL">All types</SelectItem>
                   {TRANSACTION_TYPES.map((type) => (
                     <SelectItem key={type} value={type}>
-                      {type}
+                      {TRANSACTION_TYPE_LABELS[type]}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -328,8 +327,8 @@ export default function UserDetailPage() {
             emptyMessage="No transactions found"
             columns={[
               { header: 'Date', cell: (row) => formatDate(row.createdAt) },
-              { header: 'Type', cell: (row) => row.type },
-              { header: 'Direction', cell: (row) => row.direction },
+              { header: 'Type', cell: (row) => labelFor(TRANSACTION_TYPE_LABELS, row.type) },
+              { header: 'Direction', cell: (row) => labelFor(TRANSACTION_DIRECTION_LABELS, row.direction) },
               {
                 header: 'Amount',
                 cell: (row) => (
@@ -338,12 +337,13 @@ export default function UserDetailPage() {
                       row.direction === 'DEBIT' ? 'text-destructive' : 'text-success'
                     )}
                   >
+                    {row.direction === 'DEBIT' ? '-' : '+'}
                     {formatCurrency(row.amount)}
                   </span>
                 ),
               },
               { header: 'Counterparty', cell: (row) => row.counterparty },
-              { header: 'Status', cell: (row) => <StatusBadge status={row.status} /> },
+              { header: 'Status', cell: (row) => <StatusBadge status={row.status} label={labelFor(TRANSACTION_STATUS_LABELS, row.status)} /> },
               {
                 header: 'Reference',
                 cell: (row) => <span className="font-mono text-xs">{row.referenceId}</span>,
